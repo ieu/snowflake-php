@@ -19,8 +19,6 @@ The generated ID is structured 64 bit integer:
 
 `seq` is 12 bit integer presents incremental sequence per millisecond
 
-SO the generator is expected to work until September, 2039.
-
 ## Installation
 
 First add this repo to `composer.json`:
