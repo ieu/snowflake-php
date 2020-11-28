@@ -1,7 +1,9 @@
 <?php
 
+use PHPUnit\Framework\Constraint\Constraint;
 
-class DuplicateConstraint extends PHPUnit_Framework_Constraint
+
+class DuplicateConstraint extends Constraint
 {
     private $duplicates;
 
