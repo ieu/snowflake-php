@@ -35,7 +35,7 @@ class Snowflake
         }
 
         if ($datacenterId < 0 || $datacenterId > 0x1F) {
-            throw new InvalidArgumentException("Invalid Worker ID");
+            throw new InvalidArgumentException("Invalid Datacenter ID");
         }
 
         $this->lastTimestamp = -1;
