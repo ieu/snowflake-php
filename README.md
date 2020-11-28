@@ -13,7 +13,7 @@ The generated ID is structured 64 bit integer:
  +-----------+------+------+
 ```
 
-`timestamp` is 41 bit integer presents milliseconds since 01/01/1970.
+`timestamp` is 41 bit integer presents milliseconds since 11/04/2010 01:42:54.657 GMT.
 
 `worker` is 10 bit integer presents worker ID the generator is running on
 

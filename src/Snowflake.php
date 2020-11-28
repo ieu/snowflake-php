@@ -9,6 +9,9 @@ use InvalidArgumentException;
 class Snowflake
 {
     /** @var int */
+    const EPOCH = 1288834974657;
+
+    /** @var int */
     private $lastTimestamp;
 
     /** @var int */
@@ -75,6 +78,9 @@ class Snowflake
 
         $workerId = $this->workerId;
 
-        return ( ( $now & 0x1FFFFFFFFFF ) << 22 ) | ( ( $workerId & 0x3FF ) << 12 ) | ( $sequence & 0xFFF );
+        return ( ( ($now - static::EPOCH) & 0x1FFFFFFFFFF ) << 22 )
+             | ( ( $workerId & 0x3FF ) << 12 )
+             | ( $sequence & 0xFFF )
+             ;
     }
 }

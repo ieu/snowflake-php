@@ -10,7 +10,7 @@ class SimpleTest extends TestCase
     {
         $snowflake = new Snowflake(1);
         $id = $snowflake->nextId();
-        $this->assertEquals($snowflake->getLastTimestamp(), ($id >> 22) & 0x1FFFFFFFFFF);
+        $this->assertEquals($snowflake->getLastTimestamp(), (($id >> 22) & 0x1FFFFFFFFFF) + Snowflake::EPOCH);
     }
 
     public function testEarlierTimestamp()
