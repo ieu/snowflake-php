@@ -8,21 +8,17 @@ class SimpleTest extends TestCase
 {
     public function testTimestamp()
     {
-        $datacenterId = mt_rand(0, 0x1F);
-        $workerId = mt_rand(0, 0x1F);
-        $snowflake = new Snowflake($datacenterId, $workerId);
+        $snowflake = $this->createSnowflake();
         $id = $snowflake->nextId();
-        $this->assertEquals($snowflake->getLastTimestamp(), (($id >> 22) & 0x1FFFFFFFFFF) + Snowflake::EPOCH);
+        $this->assertEquals($snowflake->getLastTimestamp(), $this->extractUnixTimestamp($id, $snowflake));
     }
 
     public function testEarlierTimestamp()
     {
-        $datacenterId = mt_rand(0, 0x1F);
-        $workerId = mt_rand(0, 0x1F);
-        $snowflake = new Snowflake($datacenterId, $workerId);
+        $snowflake = $this->createSnowflake();
 
         $id0 = $snowflake->nextId();
-        $timestamp0 = ($id0 >> 22) & 0x1FFFFFFFFFF;
+        $timestamp0 = $this->extractUnixTimestamp($id0, $snowflake);
 
         $refObject = new ReflectionObject($snowflake);
         $refProperty = $refObject->getProperty('lastTimestamp');
@@ -30,7 +26,7 @@ class SimpleTest extends TestCase
         $refProperty->setValue($snowflake, $timestamp0 - mt_rand(0, 1000));
 
         $id1 = $snowflake->nextId();
-        $timestamp1 = ($id0 >> 22) & 0x1FFFFFFFFFF;
+        $timestamp1 = $this->extractUnixTimestamp($id1, $snowflake);
 
         $this->assertFalse($timestamp1 < $timestamp0, "timestamp($timestamp1) less than previous one($timestamp0)");
     }
@@ -39,7 +35,7 @@ class SimpleTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        $workerId = mt_rand(0, 0x1F);
+        $workerId = mt_rand(0, Snowflake::MAX_WORKER_ID);
         $snowflake = new Snowflake(-1, $workerId);
     }
 
@@ -47,15 +43,15 @@ class SimpleTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        $workerId = mt_rand(0, 0x1F);
-        $snowflake = new Snowflake(0x20, $workerId);
+        $workerId = mt_rand(0, Snowflake::MAX_WORKER_ID);
+        $snowflake = new Snowflake(Snowflake::MAX_WORKER_ID + 1, $workerId);
     }
 
     public function testNegativeWorkerId()
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        $datacenterId = mt_rand(0, 0x1F);
+        $datacenterId = mt_rand(0, Snowflake::MAX_DATACENTER_ID);
         $snowflake = new Snowflake($datacenterId, -1);
     }
 
@@ -63,35 +59,29 @@ class SimpleTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        $datacenterId = mt_rand(0, 0x1F);
-        $snowflake = new Snowflake($datacenterId, 0x20);
+        $datacenterId = mt_rand(0, Snowflake::MAX_DATACENTER_ID);
+        $snowflake = new Snowflake($datacenterId, Snowflake::MAX_DATACENTER_ID + 1);
     }
 
     public function testDatacenterId()
     {
-        $datacenterId = mt_rand(0, 0x1F);
-        $workerId = mt_rand(0, 0x1F);
-        $snowflake = new Snowflake($datacenterId, $workerId);
+        $snowflake = $this->createSnowflake();
 
         $id = $snowflake->nextId();
-        $this->assertEquals($snowflake->getDatacenterId(), (($id >> 17) & 0x1F));
+        $this->assertEquals($snowflake->getDatacenterId(), $this->extractDatacenterId($id, $snowflake));
     }
 
     public function testWorkerId()
     {
-        $datacenterId = mt_rand(0, 0x1F);
-        $workerId = mt_rand(0, 0x1F);
-        $snowflake = new Snowflake($datacenterId, $workerId);
+        $snowflake = $this->createSnowflake();
 
         $id = $snowflake->nextId();
-        $this->assertEquals($snowflake->getWorkerId(), (($id >> 12) & 0x1F));
+        $this->assertEquals($snowflake->getWorkerId(), $this->extractWorkerId($id, $snowflake));
     }
 
     public function testSequence()
     {
-        $datacenterId = mt_rand(0, 0x1F);
-        $workerId = mt_rand(0, 0x1F);
-        $snowflake = new Snowflake($datacenterId, $workerId);
+        $snowflake = $this->createSnowflake();
 
         $ids = [];
         for ($i = 0; $i < 0x5000; ++$i) {
@@ -99,12 +89,12 @@ class SimpleTest extends TestCase
         }
 
         $id0 = $ids[0];
-        $prevTimestamp = ($id0 >> 22) & 0x1FFFFFFFFFF;
-        $prevSequence = $id0 & 0xFFF;
+        $prevTimestamp = $this->extractSequence($id0, $snowflake);
+        $prevSequence = $id0;
         for ($i = 1; $i < count($ids); ++$i) {
             $id = $ids[$i];
-            $timestamp = ($id >> 22) & 0x1FFFFFFFFFF;
-            $sequence = $id & 0xFFF;
+            $timestamp = $this->extractTimestamp($id, $snowflake);
+            $sequence = $id;
             if ($timestamp == $prevTimestamp) {
                 $this->assertEquals($prevSequence + 1, $sequence);
             }
@@ -115,9 +105,7 @@ class SimpleTest extends TestCase
 
     public function testDuplicateId()
     {
-        $datacenterId = mt_rand(0, 0x1F);
-        $workerId = mt_rand(0, 0x1F);
-        $snowflake = new Snowflake($datacenterId, $workerId);
+        $snowflake = $this->createSnowflake();
 
         $ids = [];
 
@@ -146,5 +134,53 @@ class SimpleTest extends TestCase
         $constraint = new DuplicateConstraint();
 
         static::assertThat($array, $constraint, $message);
+    }
+
+    public function createSnowflake()
+    {
+        return new Snowflake(
+            mt_rand(0, Snowflake::MAX_DATACENTER_ID),
+            mt_rand(0, Snowflake::MAX_WORKER_ID)
+        );
+    }
+
+    /**
+     * @param int       $id
+     * @param Snowflake $snowflake
+     */
+    public function extractSequence($id, $snowflake) {
+        return $id & $snowflake::SEQUENCE_MASK;
+    }
+
+    /**
+     * @param int       $id
+     * @param Snowflake $snowflake
+     */
+    public function extractWorkerId($id, $snowflake) {
+        return ($id >> $snowflake::WORKER_ID_SHIFT) & $snowflake::WORKER_ID_MASK;
+    }
+
+    /**
+     * @param int       $id
+     * @param Snowflake $snowflake
+     */
+    public function extractDatacenterId($id, $snowflake) {
+        return ($id >> $snowflake::DATACENTER_ID_SHIFT) & $snowflake::DATACENTER_ID_MASK;
+    }
+
+    /**
+     * @param int       $id
+     * @param Snowflake $snowflake
+     */
+    public function extractTimestamp($id, $snowflake) {
+        return ($id >> $snowflake::TIMESTAMP_SHIFT) & $snowflake::TIMESTAMP_MASK;
+    }
+
+    /**
+     * @param int       $id
+     * @param Snowflake $snowflake
+     */
+    public function extractUnixTimestamp($id, $snowflake) {
+        return $this->extractTimestamp($id, $snowflake) + $snowflake::EPOCH;
     }
 }

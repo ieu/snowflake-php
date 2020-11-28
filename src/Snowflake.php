@@ -12,6 +12,45 @@ class Snowflake
     const EPOCH = 1288834974657;
 
     /** @var int */
+    const SEQUENCE_BITS = 12;
+
+    /** @var int */
+    const WORKER_ID_BITS = 5;
+
+    /** @var int */
+    const DATACENTER_ID_BITS = 5;
+
+    /** @var int */
+    const TIMESTAMP_BITS = 41;
+
+    /** @var int */
+    const WORKER_ID_SHIFT = self::SEQUENCE_BITS;
+
+    /** @var int */
+    const DATACENTER_ID_SHIFT = self::SEQUENCE_BITS + self::WORKER_ID_BITS;
+
+    /** @var int */
+    const TIMESTAMP_SHIFT = self::SEQUENCE_BITS + self::WORKER_ID_BITS + self::DATACENTER_ID_BITS;
+
+    /** @var int */
+    const MAX_WORKER_ID = -1 ^ (-1 << self::WORKER_ID_BITS);
+
+    /** @var int */
+    const MAX_DATACENTER_ID = -1 ^ (-1 << self::DATACENTER_ID_BITS);
+
+    /** @var int */
+    const SEQUENCE_MASK = -1 ^ (-1 << self::SEQUENCE_BITS);
+
+    /** @var int */
+    const WORKER_ID_MASK = -1 ^ (-1 << self::WORKER_ID_BITS);
+
+    /** @var int */
+    const DATACENTER_ID_MASK = -1 ^ (-1 << self::DATACENTER_ID_BITS);
+
+    /** @var int */
+    const TIMESTAMP_MASK = -1 ^ (-1 << self::TIMESTAMP_BITS);
+
+    /** @var int */
     private $lastTimestamp;
 
     /** @var int */
@@ -30,11 +69,11 @@ class Snowflake
      */
     public function __construct($workerId, $datacenterId)
     {
-        if ($workerId < 0 || $workerId > 0x1F) {
+        if ($workerId < 0 || $workerId > static::MAX_WORKER_ID) {
             throw new InvalidArgumentException("Invalid Worker ID");
         }
 
-        if ($datacenterId < 0 || $datacenterId > 0x1F) {
+        if ($datacenterId < 0 || $datacenterId > static::MAX_DATACENTER_ID) {
             throw new InvalidArgumentException("Invalid Datacenter ID");
         }
 
@@ -83,7 +122,7 @@ class Snowflake
     {
         do {
             $now = (int)(microtime(true) * 1000);
-        } while($now < $this->lastTimestamp || $this->nextSequence >= 1 << 12);
+        } while($now < $this->lastTimestamp || $this->nextSequence >= 1 << static::SEQUENCE_BITS);
 
         if ($now > $this->lastTimestamp) {
             $sequence = $this->nextSequence = 0;
@@ -96,10 +135,10 @@ class Snowflake
         $datacenterId = $this->datacenterId;
         $workerId = $this->workerId;
 
-        return ( ( ($now - static::EPOCH) & 0x1FFFFFFFFFF ) << 22 )
-             | ( ( $datacenterId & 0x1F ) << 17 )
-             | ( ( $workerId & 0x1F ) << 12 )
-             | ( $sequence & 0xFFF )
+        return ( ($now - static::EPOCH) << static::TIMESTAMP_SHIFT )
+             | ( $datacenterId << static::DATACENTER_ID_SHIFT )
+             | ( $workerId << static::WORKER_ID_SHIFT )
+             | $sequence
              ;
     }
 }
