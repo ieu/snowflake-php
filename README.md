@@ -49,9 +49,10 @@ require __DIR__ . '/vendor/autoload.php';
 
 use Ieu\Snowflake\Snowflake;
 
+$datacenterId = 1;
 $workerId = 1;
 
-$snowflake = new Snowflake($workerId);
+$snowflake = new Snowflake($datacenterId, $workerId);
 
 // Getting Id
 $id = $snowflake->nextId();

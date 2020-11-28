@@ -8,14 +8,19 @@ class SimpleTest extends TestCase
 {
     public function testTimestamp()
     {
-        $snowflake = new Snowflake(1);
+        $datacenterId = mt_rand(0, 0x1F);
+        $workerId = mt_rand(0, 0x1F);
+        $snowflake = new Snowflake($datacenterId, $workerId);
         $id = $snowflake->nextId();
         $this->assertEquals($snowflake->getLastTimestamp(), (($id >> 22) & 0x1FFFFFFFFFF) + Snowflake::EPOCH);
     }
 
     public function testEarlierTimestamp()
     {
-        $snowflake = new Snowflake(1);
+        $datacenterId = mt_rand(0, 0x1F);
+        $workerId = mt_rand(0, 0x1F);
+        $snowflake = new Snowflake($datacenterId, $workerId);
+
         $id0 = $snowflake->nextId();
         $timestamp0 = ($id0 >> 22) & 0x1FFFFFFFFFF;
 
@@ -30,31 +35,63 @@ class SimpleTest extends TestCase
         $this->assertFalse($timestamp1 < $timestamp0, "timestamp($timestamp1) less than previous one($timestamp0)");
     }
 
+    public function testNegativeDatacenterId()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $workerId = mt_rand(0, 0x1F);
+        $snowflake = new Snowflake(-1, $workerId);
+    }
+
+    public function testLargeDatacenterId()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $workerId = mt_rand(0, 0x1F);
+        $snowflake = new Snowflake(0x20, $workerId);
+    }
+
     public function testNegativeWorkerId()
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        new Snowflake(-1);
+        $datacenterId = mt_rand(0, 0x1F);
+        $snowflake = new Snowflake($datacenterId, -1);
     }
 
     public function testLargeWorkerId()
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        new Snowflake(0x400);
+        $datacenterId = mt_rand(0, 0x1F);
+        $snowflake = new Snowflake($datacenterId, 0x20);
     }
 
-    public function testWorkId()
+    public function testDatacenterId()
     {
-        $workerId = mt_rand(0, 0x3FF);
-        $snowflake = new Snowflake($workerId);
+        $datacenterId = mt_rand(0, 0x1F);
+        $workerId = mt_rand(0, 0x1F);
+        $snowflake = new Snowflake($datacenterId, $workerId);
+
         $id = $snowflake->nextId();
-        $this->assertEquals($snowflake->getWorkerId(), ($id >> 12) & 0x3FF);
+        $this->assertEquals($snowflake->getDatacenterId(), (($id >> 17) & 0x1F));
+    }
+
+    public function testWorkerId()
+    {
+        $datacenterId = mt_rand(0, 0x1F);
+        $workerId = mt_rand(0, 0x1F);
+        $snowflake = new Snowflake($datacenterId, $workerId);
+
+        $id = $snowflake->nextId();
+        $this->assertEquals($snowflake->getWorkerId(), (($id >> 12) & 0x1F));
     }
 
     public function testSequence()
     {
-        $snowflake = new Snowflake(1);
+        $datacenterId = mt_rand(0, 0x1F);
+        $workerId = mt_rand(0, 0x1F);
+        $snowflake = new Snowflake($datacenterId, $workerId);
 
         $ids = [];
         for ($i = 0; $i < 0x5000; ++$i) {
@@ -78,7 +115,9 @@ class SimpleTest extends TestCase
 
     public function testDuplicateId()
     {
-        $snowflake = new Snowflake(1);
+        $datacenterId = mt_rand(0, 0x1F);
+        $workerId = mt_rand(0, 0x1F);
+        $snowflake = new Snowflake($datacenterId, $workerId);
 
         $ids = [];
 

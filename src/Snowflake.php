@@ -18,20 +18,29 @@ class Snowflake
     private $workerId;
 
     /** @var int */
+    private $datacenterId;
+
+    /** @var int */
     private $nextSequence;
 
     /**
      * @param int $workerId
+     * @param int $datacenterId
      * @throws InvalidArgumentException
      */
-    public function __construct($workerId)
+    public function __construct($workerId, $datacenterId)
     {
-        if ($workerId < 0 || $workerId > 0x3FF) {
+        if ($workerId < 0 || $workerId > 0x1F) {
+            throw new InvalidArgumentException("Invalid Worker ID");
+        }
+
+        if ($datacenterId < 0 || $datacenterId > 0x1F) {
             throw new InvalidArgumentException("Invalid Worker ID");
         }
 
         $this->lastTimestamp = -1;
         $this->workerId = $workerId;
+        $this->datacenterId = $datacenterId;
         $this->nextSequence = 0;
     }
 
@@ -41,6 +50,14 @@ class Snowflake
     public function getLastTimestamp()
     {
         return $this->lastTimestamp;
+    }
+
+    /**
+     * @return int
+     */
+    public function getDatacenterId()
+    {
+        return $this->datacenterId;
     }
 
     /**
@@ -76,10 +93,12 @@ class Snowflake
 
         $this->lastTimestamp = $now;
 
+        $datacenterId = $this->datacenterId;
         $workerId = $this->workerId;
 
         return ( ( ($now - static::EPOCH) & 0x1FFFFFFFFFF ) << 22 )
-             | ( ( $workerId & 0x3FF ) << 12 )
+             | ( ( $datacenterId & 0x1F ) << 17 )
+             | ( ( $workerId & 0x1F ) << 12 )
              | ( $sequence & 0xFFF )
              ;
     }
